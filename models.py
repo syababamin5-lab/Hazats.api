@@ -119,3 +119,10 @@ class Guide(Base):
     photo_url = Column(String, nullable=True)
     history = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class SiteConfig(Base):
+    __tablename__ = site_config
+    id = Column(Integer, primary_key=True, index=True)
+    include_exclude = Column(Text, nullable=True)
+    itinerary = Column(Text, nullable=True)
+
