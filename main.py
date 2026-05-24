@@ -48,7 +48,7 @@ with engine.connect() as conn:
         conn.rollback()
 
     # Tambah kolom paket di bookings
-    for col, ctype in [("package_name", "VARCHAR"), ("price_paid", "FLOAT")]:
+    for col, ctype in [("package_name", "VARCHAR"), ("price_paid", "FLOAT"), ("meeting_point", "VARCHAR")]:
         try:
             conn.execute(text(f"ALTER TABLE bookings ADD COLUMN {col} {ctype} NULL"))
             conn.commit()
