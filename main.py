@@ -462,9 +462,13 @@ def delete_trip(trip_id: int, db: Session = Depends(get_db),
     db_trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
     if not db_trip:
         raise HTTPException(status_code=404, detail="Trip tidak ditemukan")
-    db_trip.is_active = False
+    # Hapus semua booking yang terkait dengan trip ini terlebih dahulu agar tidak terjadi error foreign key
+    db.query(models.Booking).filter(models.Booking.trip_id == trip_id).delete(synchronize_session=False)
+    
+    # Hapus trip secara permanen
+    db.delete(db_trip)
     db.commit()
-    return {"message": "Trip berhasil dinonaktifkan"}
+    return {"message": "Trip berhasil dihapus secara permanen"}
 
 
 # ─── BOOKING Endpoints ────────────────────────────────────────────────────
