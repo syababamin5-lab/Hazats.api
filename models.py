@@ -28,6 +28,7 @@ class Trip(Base):
     mountain_name = Column(String, nullable=False)
     via = Column(String, nullable=True)
     description = Column(Text, nullable=True)
+    trip_type = Column(String, nullable=True)
     difficulty = Column(String, default="Pemula")  # "Pemula", "Menengah", "Sulit"
     departure_date = Column(String, nullable=False)  # format: YYYY-MM-DD
     return_date = Column(String, nullable=True)

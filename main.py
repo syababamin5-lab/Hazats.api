@@ -24,6 +24,11 @@ with engine.connect() as conn:
         conn.commit()
     except:
         pass
+    try:
+        conn.execute(text("ALTER TABLE trips ADD COLUMN trip_type VARCHAR NULL"))
+        conn.commit()
+    except:
+        pass
 models.Base.metadata.create_all(bind=engine)
 
 # ─── Config ───────────────────────────────────────────────────────────────
@@ -142,6 +147,7 @@ class TripCreate(BaseModel):
     difficulty: Optional[str] = "Pemula"
     departure_date: str
     return_date: Optional[str] = None
+    trip_type: Optional[str] = None
     max_quota: int
     transport: Optional[str] = None
     price: float
@@ -156,6 +162,7 @@ class TripUpdate(BaseModel):
     difficulty: Optional[str] = None
     departure_date: Optional[str] = None
     return_date: Optional[str] = None
+    trip_type: Optional[str] = None
     max_quota: Optional[int] = None
     transport: Optional[str] = None
     price: Optional[float] = None
