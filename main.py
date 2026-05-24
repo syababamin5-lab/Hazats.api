@@ -540,11 +540,14 @@ def delete_trip(trip_id: int, db: Session = Depends(get_db),
     booking_count = db.query(models.Booking).filter(models.Booking.trip_id == trip_id).count()
     if booking_count > 0:
         raise HTTPException(status_code=400, detail="Tidak dapat menghapus trip ini karena sudah ada peserta yang mendaftar. Silakan ubah trip ini menjadi Nonaktif saja.")
-    
-    # Hapus trip secara permanen
-    db.delete(db_trip)
-    db.commit()
-    return {"message": "Trip berhasil dihapus secara permanen"}
+    try:
+        # Hapus trip secara permanen
+        db.delete(db_trip)
+        db.commit()
+        return {"message": "Trip berhasil dihapus secara permanen"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Gagal menghapus di database: {str(e)}")
 
 
 # ─── BOOKING Endpoints ────────────────────────────────────────────────────
