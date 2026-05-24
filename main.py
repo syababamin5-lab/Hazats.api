@@ -207,6 +207,7 @@ class UserCreate(BaseModel):
     name: str
     contact: str
     password: str
+    gender: str
 
 
 class UserProfileUpdate(BaseModel):
@@ -404,9 +405,10 @@ def get_user_by_contact(db: Session, contact: str):
     ).first()
 
 
-def generate_pendaki_id(db: Session) -> str:
+def generate_pendaki_id(db: Session, gender: str) -> str:
     now = datetime.utcnow()
     year_short = str(now.year)[-2:]
+    gender_code = "1" if gender == "Laki-laki" else "2" if gender == "Perempuan" else "0"
     count = db.query(models.User).filter(models.User.role == "user").count()
     return f"HZT-{year_short}-{(count + 1):04d}"
 
@@ -425,7 +427,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         email=email,
         phone=phone,
         hashed_password=hash_password(user.password),
-        pendaki_id=generate_pendaki_id(db)
+        gender=user.gender,
+        pendaki_id=generate_pendaki_id(db, user.gender)
     )
     db.add(db_user)
     db.commit()
