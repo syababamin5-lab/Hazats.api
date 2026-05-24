@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Query
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
@@ -387,7 +387,7 @@ def delete_trip(trip_id: int, db: Session = Depends(get_db),
 
 # ─── BOOKING Endpoints ────────────────────────────────────────────────────
 @app.post("/bookings", status_code=201)
-def create_booking(trip_id: int = Query(...), db: Session = Depends(get_db),
+def create_booking(trip_id: int = Query(...), meeting_point: Optional[str] = Query(None), db: Session = Depends(get_db),
                    current_user: models.User = Depends(get_current_user)):
     trip = db.query(models.Trip).filter(
         models.Trip.id == trip_id, models.Trip.is_active == True).first()
@@ -395,6 +395,9 @@ def create_booking(trip_id: int = Query(...), db: Session = Depends(get_db),
         raise HTTPException(status_code=404, detail="Trip tidak ditemukan")
     if trip.remaining_quota <= 0:
         raise HTTPException(status_code=400, detail="Kuota trip sudah penuh")
+        
+    if not meeting_point:
+        raise HTTPException(status_code=400, detail="Titik kumpul wajib dipilih")
 
     existing = db.query(models.Booking).filter(
         models.Booking.user_id == current_user.id,
@@ -404,7 +407,7 @@ def create_booking(trip_id: int = Query(...), db: Session = Depends(get_db),
     if existing:
         raise HTTPException(status_code=400, detail="Anda sudah memesan trip ini")
 
-    booking = models.Booking(user_id=current_user.id, trip_id=trip_id, status="pending")
+    booking = models.Booking(user_id=current_user.id, trip_id=trip_id, status="pending", meeting_point=meeting_point)
     db.add(booking)
     trip.remaining_quota -= 1
     db.commit()
@@ -434,6 +437,7 @@ def get_my_bookings(db: Session = Depends(get_db),
             "status": b.status,
             "payment_proof_url": b.payment_proof_url,
             "created_at": b.created_at.isoformat(),
+            "meeting_point": b.meeting_point,
             "trip": {
                 "id": b.trip.id,
                 "mountain_name": b.trip.mountain_name,
@@ -486,6 +490,7 @@ def get_all_bookings(db: Session = Depends(get_db),
             "status": b.status,
             "payment_proof_url": b.payment_proof_url,
             "created_at": b.created_at.isoformat(),
+            "meeting_point": b.meeting_point,
             "user": {
                 "name": b.user.name,
                 "pendaki_id": b.user.pendaki_id,
@@ -643,3 +648,42 @@ def delete_meeting_point(item_id: int, db: Session = Depends(get_db), admin: mod
     db.delete(db_item)
     db.commit()
     return {"message": "Item berhasil dihapus"}
+
+# ─── LIVE CHAT (WebSockets) ───────────────────────────────────────────────
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/chat/{client_id}")
+async def websocket_chat_endpoint(websocket: WebSocket, client_id: str):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            db = SessionLocal()
+            chat_msg = models.ChatMessage(session_id=client_id, sender="user", message=data)
+            db.add(chat_msg)
+            db.commit()
+            db.close()
+            await manager.broadcast(f"{client_id}: {data}")
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        await manager.broadcast(f"Client #{client_id} left the chat")
+
+@app.get("/admin/chat/history")
+def get_chat_history(db: Session = Depends(get_db), admin: models.User = Depends(admin_required)):
+    return db.query(models.ChatMessage).order_by(models.ChatMessage.created_at.desc()).limit(100).all()

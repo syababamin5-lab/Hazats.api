@@ -49,6 +49,7 @@ class Booking(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     trip_id = Column(Integer, ForeignKey("trips.id"))
     status = Column(String, default="pending")  # "pending", "confirmed", "cancelled"
+    meeting_point = Column(String, nullable=True)
     payment_proof_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
