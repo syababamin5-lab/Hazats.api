@@ -617,12 +617,12 @@ def get_all_users(db: Session = Depends(get_db),
         {
             "id": u.id,
             "name": u.name,
-            "pendaki_id": u.pendaki_id,
+            "pendaki_id": u.pendaki_id or "-",
             "email": u.email,
             "phone": u.phone,
             "is_active": u.is_active,
-            "created_at": u.created_at.isoformat(),
-            "total_bookings": len(u.bookings)
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+            "total_bookings": len(u.bookings) if u.bookings else 0
         }
         for u in users
     ]
