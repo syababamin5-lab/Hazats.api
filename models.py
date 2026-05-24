@@ -26,6 +26,7 @@ class Trip(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     mountain_name = Column(String, nullable=False)
+    via = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     difficulty = Column(String, default="Pemula")  # "Pemula", "Menengah", "Sulit"
     departure_date = Column(String, nullable=False)  # format: YYYY-MM-DD

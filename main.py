@@ -130,6 +130,7 @@ class Token(BaseModel):
 
 class TripCreate(BaseModel):
     mountain_name: str
+    via: Optional[str] = None
     description: Optional[str] = None
     difficulty: Optional[str] = "Pemula"
     departure_date: str
@@ -143,6 +144,7 @@ class TripCreate(BaseModel):
 
 class TripUpdate(BaseModel):
     mountain_name: Optional[str] = None
+    via: Optional[str] = None
     description: Optional[str] = None
     difficulty: Optional[str] = None
     departure_date: Optional[str] = None
