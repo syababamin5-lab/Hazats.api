@@ -10,3 +10,5 @@ python-multipart
 email-validator
 argon2-cffi
 bcrypt
+groq
+httpx

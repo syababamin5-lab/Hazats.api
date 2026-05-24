@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Query, WebSocket, WebSocketDisconnect
+import httpx
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
@@ -77,6 +78,53 @@ app.add_middleware(
 
 ph = PasswordHasher()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+# ─── AI Description Generator ─────────────────────────────────────────────
+class DescriptionRequest(BaseModel):
+    mountain_name: str
+    via: Optional[str] = None
+
+@app.post("/generate-description")
+async def generate_description(req: DescriptionRequest):
+    """Generate AI trip description using Groq (free, no user key needed)"""
+    via_text = f" via {req.via}" if req.via else ""
+    prompt = f"""Buatkan deskripsi promosi open trip pendakian untuk Gunung {req.mountain_name}{via_text}.
+
+Deskripsi harus informatif, menarik, tidak monoton, dan terstruktur. Pastikan menyebutkan:
+1. Berapa estimasi waktu tempuh pendakian (jam) dari basecamp ke puncak.
+2. Ada berapa pos (shelter/pos) pendakian di jalur ini, sebutkan namanya.
+3. Berapa jalur pendakian resmi yang ada di gunung ini.
+4. Apa yang istimewa dan spesial dari gunung ini (pemandangan, flora, fauna, spot foto, dll).
+5. Apa highlight atau momen terbaik yang akan dialami peserta.
+
+Format dalam 3 paragraf panjang yang mengalir, memikat, dan membuat pembaca ingin langsung mendaftar.
+Gunakan gaya bahasa marketing modern yang semangat dan menginspirasi dalam Bahasa Indonesia.
+Jangan memotong kalimat di tengah jalan, selesaikan setiap kalimat."""
+
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=503, detail="GROQ_API_KEY belum dikonfigurasi di server.")
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            res = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 1024,
+                    "temperature": 0.8
+                }
+            )
+            if res.status_code != 200:
+                raise HTTPException(status_code=502, detail=f"Groq error: {res.text}")
+            data = res.json()
+            text = data["choices"][0]["message"]["content"].strip()
+            return {"description": text}
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=504, detail="Timeout saat menghubungi AI server.")
 
 def hash_password(password: str) -> str:
     return ph.hash(password)
