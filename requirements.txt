@@ -8,3 +8,5 @@ python-dotenv
 python-jose[cryptography]
 python-multipart
 email-validator
+argon2-cffi
+bcrypt
