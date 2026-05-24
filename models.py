@@ -78,3 +78,19 @@ class GalleryImage(Base):
     url = Column(String, nullable=False)
     description = Column(String, nullable=True)
     uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class MeetingPointConfig(Base):
+    __tablename__ = "meeting_point_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class TransportConfig(Base):
+    __tablename__ = "transport_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

@@ -159,6 +159,10 @@ class BookingStatusUpdate(BaseModel):
     status: str  # "confirmed" atau "cancelled"
 
 
+class ConfigItemCreate(BaseModel):
+    name: str
+
+
 # ─── Seed Data ────────────────────────────────────────────────────────────
 def seed_data(db: Session):
     # Seed admin
@@ -224,6 +228,27 @@ def seed_data(db: Session):
         db.add_all(sample_trips)
         db.commit()
         print("[OK] Trip seed berhasil: 3 trip contoh ditambahkan")
+
+    # Seed config transports
+    if db.query(models.TransportConfig).count() == 0:
+        transports = [
+            models.TransportConfig(name="Hiace Commuter (AC)"),
+            models.TransportConfig(name="Elf Long (AC)"),
+            models.TransportConfig(name="Avanza / Xenia (AC)")
+        ]
+        db.add_all(transports)
+        db.commit()
+        print("[OK] Transport seed berhasil")
+
+    # Seed config meeting points
+    if db.query(models.MeetingPointConfig).count() == 0:
+        points = [
+            models.MeetingPointConfig(name="Lapangan Parkir Alun-Alun Soreang, Kab. Bandung"),
+            models.MeetingPointConfig(name="Gerbang Tol Pasteur, Bandung")
+        ]
+        db.add_all(points)
+        db.commit()
+        print("[OK] Meeting point seed berhasil")
 
 
 @app.on_event("startup")
@@ -561,3 +586,60 @@ def delete_gallery_image(image_id: int, db: Session = Depends(get_db),
     db.delete(img)
     db.commit()
     return {"message": "Gambar berhasil dihapus"}
+
+
+# ─── CONFIG Endpoints ─────────────────────────────────────────────────────
+@app.get("/admin/config/transports")
+def get_transports(db: Session = Depends(get_db)):
+    return db.query(models.TransportConfig).order_by(models.TransportConfig.created_at.asc()).all()
+
+
+@app.post("/admin/config/transports", status_code=201)
+def create_transport(item: ConfigItemCreate, db: Session = Depends(get_db), admin: models.User = Depends(admin_required)):
+    db_item = models.TransportConfig(name=item.name)
+    db.add(db_item)
+    try:
+        db.commit()
+        db.refresh(db_item)
+        return db_item
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Transportasi sudah ada")
+
+
+@app.delete("/admin/config/transports/{item_id}")
+def delete_transport(item_id: int, db: Session = Depends(get_db), admin: models.User = Depends(admin_required)):
+    db_item = db.query(models.TransportConfig).filter(models.TransportConfig.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Item tidak ditemukan")
+    db.delete(db_item)
+    db.commit()
+    return {"message": "Item berhasil dihapus"}
+
+
+@app.get("/admin/config/meeting-points")
+def get_meeting_points(db: Session = Depends(get_db)):
+    return db.query(models.MeetingPointConfig).order_by(models.MeetingPointConfig.created_at.asc()).all()
+
+
+@app.post("/admin/config/meeting-points", status_code=201)
+def create_meeting_point(item: ConfigItemCreate, db: Session = Depends(get_db), admin: models.User = Depends(admin_required)):
+    db_item = models.MeetingPointConfig(name=item.name)
+    db.add(db_item)
+    try:
+        db.commit()
+        db.refresh(db_item)
+        return db_item
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Titik Kumpul sudah ada")
+
+
+@app.delete("/admin/config/meeting-points/{item_id}")
+def delete_meeting_point(item_id: int, db: Session = Depends(get_db), admin: models.User = Depends(admin_required)):
+    db_item = db.query(models.MeetingPointConfig).filter(models.MeetingPointConfig.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Item tidak ditemukan")
+    db.delete(db_item)
+    db.commit()
+    return {"message": "Item berhasil dihapus"}
