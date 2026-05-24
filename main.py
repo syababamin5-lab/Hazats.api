@@ -17,6 +17,13 @@ import shutil
 import uuid
 
 # ─── Inisialisasi DB ──────────────────────────────────────────────────────
+from sqlalchemy import text
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE trips ADD COLUMN via VARCHAR NULL"))
+        conn.commit()
+    except:
+        pass
 models.Base.metadata.create_all(bind=engine)
 
 # ─── Config ───────────────────────────────────────────────────────────────
