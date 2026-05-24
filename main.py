@@ -405,9 +405,10 @@ def get_user_by_contact(db: Session, contact: str):
 
 
 def generate_pendaki_id(db: Session) -> str:
-    year = datetime.utcnow().year
+    now = datetime.utcnow()
+    year_short = str(now.year)[-2:]
     count = db.query(models.User).filter(models.User.role == "user").count()
-    return f"JBR-{year}-{(count + 1):04d}"
+    return f"HZT-{year_short}-{(count + 1):04d}"
 
 
 # ─── AUTH Endpoints ───────────────────────────────────────────────────────
