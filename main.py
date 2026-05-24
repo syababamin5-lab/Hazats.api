@@ -587,15 +587,15 @@ async def upload_gallery_image(
     db: Session = Depends(get_db),
     admin: models.User = Depends(admin_required)
 ):
-    ext = os.path.splitext(file.filename)[1]
-    filename = f"gallery_{uuid.uuid4().hex}{ext}"
-    filepath = f"uploads/{filename}"
-    with open(filepath, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    import base64
+    file_bytes = await file.read()
+    b64_encoded = base64.b64encode(file_bytes).decode('utf-8')
+    mime_type = file.content_type or "image/jpeg"
+    data_url = f"data:{mime_type};base64,{b64_encoded}"
 
     gallery_image = models.GalleryImage(
-        filename=filename,
-        url=f"/uploads/{filename}",
+        filename=file.filename,
+        url=data_url,
         description=description
     )
     db.add(gallery_image)
