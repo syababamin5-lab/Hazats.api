@@ -603,6 +603,15 @@ def get_my_bookings(db: Session = Depends(get_db),
             "payment_proof_url": b.payment_proof_url,
             "created_at": b.created_at.isoformat(),
             "meeting_point": b.meeting_point,
+            "package_name": b.package_name,
+            "price_paid": float(b.price_paid) if b.price_paid else None,
+            "user": {
+                 "name": current_user.name,
+                 "email": current_user.email,
+                 "phone": current_user.phone,
+                 "nik": getattr(current_user, 'nik', None),
+                 "emergency_contact": getattr(current_user, 'emergency_contact', None)
+            },
             "trip": {
                 "id": b.trip.id,
                 "mountain_name": b.trip.mountain_name,
@@ -613,6 +622,7 @@ def get_my_bookings(db: Session = Depends(get_db),
                 "transport": b.trip.transport,
                 "meeting_point": b.trip.meeting_point,
                 "image_url": b.trip.image_url,
+                "via": getattr(b.trip, 'via', None),
             }
         }
         for b in bookings
