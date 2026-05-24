@@ -39,6 +39,21 @@ with engine.connect() as conn:
         except:
             conn.rollback()
 
+    # Tambah kolom paket trip
+    try:
+        conn.execute(text("ALTER TABLE trips ADD COLUMN packages TEXT NULL"))
+        conn.commit()
+    except:
+        conn.rollback()
+
+    # Tambah kolom paket di bookings
+    for col, ctype in [("package_name", "VARCHAR"), ("price_paid", "FLOAT")]:
+        try:
+            conn.execute(text(f"ALTER TABLE bookings ADD COLUMN {col} {ctype} NULL"))
+            conn.commit()
+        except:
+            conn.rollback()
+
 models.Base.metadata.create_all(bind=engine)
 
 # ─── Config ───────────────────────────────────────────────────────────────
@@ -176,6 +191,7 @@ class TripCreate(BaseModel):
     price: float
     meeting_point: Optional[str] = None
     image_url: Optional[str] = None
+    packages: Optional[str] = None
 
 
 class TripUpdate(BaseModel):
@@ -191,6 +207,7 @@ class TripUpdate(BaseModel):
     price: Optional[float] = None
     meeting_point: Optional[str] = None
     image_url: Optional[str] = None
+    packages: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -462,8 +479,10 @@ def delete_trip(trip_id: int, db: Session = Depends(get_db),
     db_trip = db.query(models.Trip).filter(models.Trip.id == trip_id).first()
     if not db_trip:
         raise HTTPException(status_code=404, detail="Trip tidak ditemukan")
-    # Hapus semua booking yang terkait dengan trip ini terlebih dahulu agar tidak terjadi error foreign key
-    db.query(models.Booking).filter(models.Booking.trip_id == trip_id).delete(synchronize_session=False)
+    # Periksa apakah sudah ada pendaftar
+    booking_count = db.query(models.Booking).filter(models.Booking.trip_id == trip_id).count()
+    if booking_count > 0:
+        raise HTTPException(status_code=400, detail="Tidak dapat menghapus trip ini karena sudah ada peserta yang mendaftar. Silakan ubah trip ini menjadi Nonaktif saja.")
     
     # Hapus trip secara permanen
     db.delete(db_trip)
@@ -473,7 +492,7 @@ def delete_trip(trip_id: int, db: Session = Depends(get_db),
 
 # ─── BOOKING Endpoints ────────────────────────────────────────────────────
 @app.post("/bookings", status_code=201)
-def create_booking(trip_id: int = Query(...), meeting_point: Optional[str] = Query(None), db: Session = Depends(get_db),
+def create_booking(trip_id: int = Query(...), meeting_point: Optional[str] = Query(None), package_name: Optional[str] = Query(None), price_paid: Optional[float] = Query(None), db: Session = Depends(get_db),
                    current_user: models.User = Depends(get_current_user)):
     trip = db.query(models.Trip).filter(
         models.Trip.id == trip_id, models.Trip.is_active == True).first()
@@ -493,7 +512,7 @@ def create_booking(trip_id: int = Query(...), meeting_point: Optional[str] = Que
     if existing:
         raise HTTPException(status_code=400, detail="Anda sudah memesan trip ini")
 
-    booking = models.Booking(user_id=current_user.id, trip_id=trip_id, status="pending", meeting_point=meeting_point)
+    booking = models.Booking(user_id=current_user.id, trip_id=trip_id, status="pending", meeting_point=meeting_point, package_name=package_name, price_paid=price_paid)
     db.add(booking)
     trip.remaining_quota -= 1
     db.commit()

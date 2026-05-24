@@ -47,6 +47,7 @@ class Trip(Base):
     price = Column(Float, nullable=False)
     meeting_point = Column(String, nullable=True)
     image_url = Column(String, nullable=True)
+    packages = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -62,6 +63,8 @@ class Booking(Base):
     status = Column(String, default="pending")  # "pending", "confirmed", "cancelled"
     meeting_point = Column(String, nullable=True)
     payment_proof_url = Column(String, nullable=True)
+    package_name = Column(String, nullable=True)
+    price_paid = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="bookings")
