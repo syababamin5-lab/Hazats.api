@@ -95,3 +95,13 @@ class TransportConfig(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class Guide(Base):
+    __tablename__ = "guides"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    photo_url = Column(String, nullable=True)
+    history = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

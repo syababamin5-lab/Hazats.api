@@ -163,6 +163,12 @@ class ConfigItemCreate(BaseModel):
     name: str
 
 
+class GuideCreate(BaseModel):
+    name: str
+    photo_url: Optional[str] = None
+    history: Optional[str] = None
+
+
 # ─── Seed Data ────────────────────────────────────────────────────────────
 def seed_data(db: Session):
     # Seed admin
@@ -249,6 +255,24 @@ def seed_data(db: Session):
         db.add_all(points)
         db.commit()
         print("[OK] Meeting point seed berhasil")
+
+    # Seed guides
+    if db.query(models.Guide).count() == 0:
+        guides = [
+            models.Guide(
+                name="Kang Ewon",
+                photo_url="https://images.unsplash.com/photo-1533227260871-e08cb00fcb0d?q=80&w=2070&auto=format&fit=crop",
+                history="Telah mendaki lebih dari 50 gunung di Indonesia. Berpengalaman sebagai porter dan pemandu selama 10 tahun. Spesialis di jalur Gunung Gede Pangrango."
+            ),
+            models.Guide(
+                name="Kang Asep",
+                photo_url="https://images.unsplash.com/photo-1542223189-67a03fa0f0bd?q=80&w=2074&auto=format&fit=crop",
+                history="Mantan anggota SAR daerah dengan spesialisasi navigasi darat dan survival. Selalu mengutamakan keselamatan dan kenyamanan pendaki pemula."
+            )
+        ]
+        db.add_all(guides)
+        db.commit()
+        print("[OK] Guides seed berhasil")
 
 
 @app.on_event("startup")
@@ -639,6 +663,42 @@ def create_meeting_point(item: ConfigItemCreate, db: Session = Depends(get_db), 
         db.rollback()
         raise HTTPException(status_code=400, detail="Titik Kumpul sudah ada")
 
+
+# ─── GUIDES Endpoints ─────────────────────────────────────────────────────
+@app.get("/guides")
+def get_guides(db: Session = Depends(get_db)):
+    return db.query(models.Guide).order_by(models.Guide.created_at.desc()).all()
+
+
+@app.post("/guides", status_code=201)
+def create_guide(guide: GuideCreate, db: Session = Depends(get_db), admin: models.User = Depends(admin_required)):
+    db_guide = models.Guide(**guide.dict())
+    db.add(db_guide)
+    db.commit()
+    db.refresh(db_guide)
+    return db_guide
+
+
+@app.put("/guides/{guide_id}")
+def update_guide(guide_id: int, update_data: GuideCreate, db: Session = Depends(get_db), admin: models.User = Depends(admin_required)):
+    db_guide = db.query(models.Guide).filter(models.Guide.id == guide_id).first()
+    if not db_guide:
+        raise HTTPException(status_code=404, detail="Pemandu tidak ditemukan")
+    for key, value in update_data.dict(exclude_unset=True).items():
+        setattr(db_guide, key, value)
+    db.commit()
+    db.refresh(db_guide)
+    return db_guide
+
+
+@app.delete("/guides/{guide_id}")
+def delete_guide(guide_id: int, db: Session = Depends(get_db), admin: models.User = Depends(admin_required)):
+    db_guide = db.query(models.Guide).filter(models.Guide.id == guide_id).first()
+    if not db_guide:
+        raise HTTPException(status_code=404, detail="Pemandu tidak ditemukan")
+    db.delete(db_guide)
+    db.commit()
+    return {"message": "Pemandu berhasil dihapus"}
 
 @app.delete("/admin/config/meeting-points/{item_id}")
 def delete_meeting_point(item_id: int, db: Session = Depends(get_db), admin: models.User = Depends(admin_required)):
