@@ -23,12 +23,12 @@ with engine.connect() as conn:
         conn.execute(text("ALTER TABLE trips ADD COLUMN via VARCHAR NULL"))
         conn.commit()
     except:
-        pass
+        conn.rollback()
     try:
         conn.execute(text("ALTER TABLE trips ADD COLUMN trip_type VARCHAR NULL"))
         conn.commit()
     except:
-        pass
+        conn.rollback()
 models.Base.metadata.create_all(bind=engine)
 
 # ─── Config ───────────────────────────────────────────────────────────────
