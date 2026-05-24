@@ -29,6 +29,16 @@ with engine.connect() as conn:
         conn.commit()
     except:
         conn.rollback()
+
+    # Tambahan kolom User Profile
+    new_user_cols = ['nik', 'birth_place_date', 'gender', 'address', 'social_media', 'emergency_contact', 'medical_history', 'ktp_image_url', 'profile_image_url']
+    for col in new_user_cols:
+        try:
+            conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} VARCHAR NULL"))
+            conn.commit()
+        except:
+            conn.rollback()
+
 models.Base.metadata.create_all(bind=engine)
 
 # ─── Config ───────────────────────────────────────────────────────────────
@@ -125,6 +135,19 @@ class UserCreate(BaseModel):
     name: str
     contact: str
     password: str
+
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    nik: Optional[str] = None
+    birth_place_date: Optional[str] = None
+    gender: Optional[str] = None
+    address: Optional[str] = None
+    social_media: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    medical_history: Optional[str] = None
+    ktp_image_url: Optional[str] = None
+    profile_image_url: Optional[str] = None
 
 
 class UserLogin(BaseModel):
@@ -367,9 +390,28 @@ def get_me(current_user: models.User = Depends(get_current_user)):
         "pendaki_id": current_user.pendaki_id,
         "email": current_user.email,
         "phone": current_user.phone,
+        "nik": getattr(current_user, 'nik', None),
+        "birth_place_date": getattr(current_user, 'birth_place_date', None),
+        "gender": getattr(current_user, 'gender', None),
+        "address": getattr(current_user, 'address', None),
+        "social_media": getattr(current_user, 'social_media', None),
+        "emergency_contact": getattr(current_user, 'emergency_contact', None),
+        "medical_history": getattr(current_user, 'medical_history', None),
+        "ktp_image_url": getattr(current_user, 'ktp_image_url', None),
+        "profile_image_url": getattr(current_user, 'profile_image_url', None),
         "role": current_user.role,
         "created_at": current_user.created_at.isoformat()
     }
+
+
+@app.put("/me")
+def update_me(update_data: UserProfileUpdate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    update_dict = update_data.dict(exclude_unset=True)
+    for k, v in update_dict.items():
+        setattr(current_user, k, v)
+    db.commit()
+    db.refresh(current_user)
+    return {"detail": "Profil berhasil diperbarui"}
 
 
 # ─── TRIP Endpoints ───────────────────────────────────────────────────────
