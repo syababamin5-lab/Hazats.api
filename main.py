@@ -604,7 +604,8 @@ def get_my_bookings(db: Session = Depends(get_db),
         {
             "id": b.id,
             "status": b.status,
-            "payment_proof_url": b.payment_proof_url,
+            "payment_proof_url": b.payment_proof_url, # Legacy
+            "payment_proofs": [{"id": p.id, "file_url": p.file_url, "amount": p.amount, "created_at": p.created_at.isoformat()} for p in b.payment_proofs],
             "created_at": b.created_at.isoformat(),
             "meeting_point": b.meeting_point,
             "package_name": b.package_name,
@@ -637,6 +638,7 @@ def get_my_bookings(db: Session = Depends(get_db),
 async def upload_payment_proof(
     booking_id: int,
     file: UploadFile = File(...),
+    amount: float = Form(0),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -653,9 +655,22 @@ async def upload_payment_proof(
     with open(filepath, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    booking.payment_proof_url = f"/uploads/{filename}"
+    # Simpan ke tabel payment_proofs
+    new_proof = models.PaymentProof(
+        booking_id=booking.id,
+        file_url=f"/uploads/{filename}",
+        amount=amount
+    )
+    db.add(new_proof)
     db.commit()
-    return {"payment_proof_url": booking.payment_proof_url}
+    db.refresh(new_proof)
+    
+    return {
+        "id": new_proof.id,
+        "file_url": new_proof.file_url,
+        "amount": new_proof.amount,
+        "created_at": new_proof.created_at.isoformat()
+    }
 
 
 @app.get("/bookings")
@@ -667,14 +682,15 @@ def get_all_bookings(db: Session = Depends(get_db),
         {
             "id": b.id,
             "status": b.status,
-            "payment_proof_url": b.payment_proof_url,
+            "payment_proof_url": b.payment_proof_url, # Legacy
+            "payment_proofs": [{"id": p.id, "file_url": p.file_url, "amount": p.amount, "created_at": p.created_at.isoformat()} for p in b.payment_proofs],
             "created_at": b.created_at.isoformat(),
             "meeting_point": b.meeting_point,
             "user": {
                 "name": b.user.name,
-                "pendaki_id": b.user.pendaki_id,
-                "email": b.user.email,
-                "phone": b.user.phone,
+                "pendaki_id": getattr(b.user, 'pendaki_id', '-'),
+                "email": getattr(b.user, 'email', '-'),
+                "phone": getattr(b.user, 'phone', '-'),
             },
             "trip": {
                 "id": b.trip.id,

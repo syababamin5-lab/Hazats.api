@@ -69,6 +69,19 @@ class Booking(Base):
 
     user = relationship("User", back_populates="bookings")
     trip = relationship("Trip", back_populates="bookings")
+    payment_proofs = relationship("PaymentProof", back_populates="booking", cascade="all, delete-orphan")
+
+
+class PaymentProof(Base):
+    __tablename__ = "payment_proofs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"))
+    file_url = Column(String)
+    amount = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    booking = relationship("Booking", back_populates="payment_proofs")
 
 
 class ChatMessage(Base):
