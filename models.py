@@ -65,6 +65,7 @@ class Booking(Base):
     payment_proof_url = Column(String, nullable=True)
     package_name = Column(String, nullable=True)
     price_paid = Column(Float, nullable=True)
+    cancel_reason = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="bookings")
@@ -79,6 +80,8 @@ class PaymentProof(Base):
     booking_id = Column(Integer, ForeignKey("bookings.id"))
     file_url = Column(String)
     amount = Column(Float, nullable=True)
+    status = Column(String, default="pending")  # "pending", "verified", "rejected"
+    reject_reason = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     booking = relationship("Booking", back_populates="payment_proofs")
@@ -92,10 +95,46 @@ class ChatMessage(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     sender = Column(String)  # "user" atau "admin"
     message = Column(Text)
+    message_type = Column(String, default="text")
+    attachment_url = Column(String, nullable=True)
+    reply_to_id = Column(Integer, ForeignKey("chat_messages.id"), nullable=True)
+    is_edited = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="chat_messages")
+
+
+class Mountain(Base):
+    __tablename__ = "mountains"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    location = Column(String, nullable=False)
+    elevation = Column(Integer, nullable=False)  # mdpl
+    difficulty = Column(String, default="Menengah")
+    description = Column(Text, nullable=True)
+    image_url = Column(String, nullable=True)
+    gallery = Column(Text, nullable=True) # JSON array of strings
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class PrivateTripRequest(Base):
+    __tablename__ = "private_trip_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    name = Column(String, nullable=False)
+    phone = Column(String, nullable=False)
+    mountain_name = Column(String, nullable=False)
+    participants_count = Column(Integer, nullable=False)
+    start_date = Column(String, nullable=False)
+    end_date = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    status = Column(String, default="pending")  # pending, contacted, confirmed, completed, cancelled
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
 class GalleryImage(Base):
