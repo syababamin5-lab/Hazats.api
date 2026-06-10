@@ -30,6 +30,11 @@ with engine.connect() as conn:
         conn.commit()
     except:
         conn.rollback()
+    try:
+        conn.execute(text("ALTER TABLE trips ADD COLUMN packages TEXT NULL"))
+        conn.commit()
+    except:
+        conn.rollback()
 
     # Tambahan kolom User Profile
     new_user_cols = ['nik', 'birth_place_date', 'gender', 'address', 'social_media', 'emergency_contact', 'medical_history', 'ktp_image_url', 'profile_image_url']
@@ -54,7 +59,7 @@ with engine.connect() as conn:
         conn.rollback()
 
     # Tambah kolom paket di bookings
-    for col, ctype in [("package_name", "VARCHAR"), ("price_paid", "FLOAT"), ("meeting_point", "VARCHAR")]:
+    for col, ctype in [("package_name", "VARCHAR"), ("price_paid", "FLOAT"), ("meeting_point", "VARCHAR"), ("cancel_reason", "TEXT")]:
         try:
             conn.execute(text(f"ALTER TABLE bookings ADD COLUMN {col} {ctype} NULL"))
             conn.commit()
