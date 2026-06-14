@@ -18,61 +18,27 @@ import shutil
 import uuid
 
 # ─── Inisialisasi DB ──────────────────────────────────────────────────────
-from sqlalchemy import text
-with engine.connect() as conn:
-    try:
-        conn.execute(text("ALTER TABLE trips ADD COLUMN via VARCHAR NULL"))
-        conn.commit()
-    except:
-        conn.rollback()
-    try:
-        conn.execute(text("ALTER TABLE trips ADD COLUMN trip_type VARCHAR NULL"))
-        conn.commit()
-    except:
-        conn.rollback()
-    try:
-        conn.execute(text("ALTER TABLE trips ADD COLUMN packages TEXT NULL"))
-        conn.commit()
-    except:
-        conn.rollback()
-
-    # Tambahan kolom User Profile
-    new_user_cols = ['nik', 'birth_place_date', 'gender', 'address', 'social_media', 'emergency_contact', 'medical_history', 'ktp_image_url', 'profile_image_url']
-    for col in new_user_cols:
-        try:
-            conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} VARCHAR NULL"))
-            conn.commit()
-        except:
-            conn.rollback()
-
-    # Tambah kolom paket trip
-    try:
-        conn.execute(text("ALTER TABLE private_trip_requests ADD COLUMN notes TEXT NULL"))
-        conn.commit()
-    except:
-        conn.rollback()
-
-    try:
-        conn.execute(text("ALTER TABLE mountains ADD COLUMN gallery TEXT NULL"))
-        conn.commit()
-    except:
-        conn.rollback()
-
-    # Tambah kolom paket di bookings
-    for col, ctype in [("package_name", "VARCHAR"), ("price_paid", "FLOAT"), ("meeting_point", "VARCHAR"), ("cancel_reason", "TEXT")]:
-        try:
-            conn.execute(text(f"ALTER TABLE bookings ADD COLUMN {col} {ctype} NULL"))
-            conn.commit()
-        except:
-            conn.rollback()
-
-    try:
-        conn.execute(text("ALTER TABLE payment_proofs ADD COLUMN reject_reason VARCHAR NULL"))
-        conn.commit()
-    except:
-        conn.rollback()
+from sqlalchemy import inspect, text
 
 models.Base.metadata.create_all(bind=engine)
+
+# Auto-migrate schema: Add missing columns dynamically
+def auto_upgrade_schema(engine):
+    inspector = inspect(engine)
+    for table_name, table in models.Base.metadata.tables.items():
+        if inspector.has_table(table_name):
+            db_columns = [col['name'] for col in inspector.get_columns(table_name)]
+            for column in table.columns:
+                if column.name not in db_columns:
+                    col_type = column.type.compile(engine.dialect)
+                    try:
+                        with engine.begin() as conn:
+                            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column.name} {col_type}"))
+                            print(f"Added column {column.name} ({col_type}) to {table_name}")
+                    except Exception as e:
+                        print(f"Failed to add column {column.name} to {table_name}: {e}")
+
+auto_upgrade_schema(engine)
 
 # ─── Config ───────────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("SECRET_KEY", "hazats-adventure-secret-key-jbr-2026")
